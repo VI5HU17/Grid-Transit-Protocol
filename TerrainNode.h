@@ -1,7 +1,8 @@
 #ifndef TERRAIN_NODE_H
 #define TERRAIN_NODE_H
 
-// Categorizes the type of land (impacts legal friction)
+#include <string>
+
 enum class LandGrade {
     BARREN_GOVERNMENT,
     INDUSTRIAL_ZONE,
@@ -10,7 +11,6 @@ enum class LandGrade {
     URBAN_RESIDENTIAL
 };
 
-// Categorizes the state laws (impacts compensation multipliers)
 enum class StateJurisdiction {
     GUJARAT,
     RAJASTHAN,
@@ -20,16 +20,17 @@ enum class StateJurisdiction {
 class TerrainNode {
 public:
     int nodeId;
+    std::string cityName; // NEW: The system now recognizes textual names
     double latitude;
     double longitude;
     double elevationMeters; 
     LandGrade grade;
     StateJurisdiction jurisdiction;
-    double protestProbabilityScore; // 0.0 (Safe) to 1.0 (Guaranteed Protest)
+    double protestProbabilityScore; 
 
-    // Constructor to build the node
-    TerrainNode(int id, double lat, double lon, double elev, LandGrade lg, StateJurisdiction j, double protestScore)
-        : nodeId(id), latitude(lat), longitude(lon), elevationMeters(elev), 
+    // Updated Constructor
+    TerrainNode(int id, std::string name, double lat, double lon, double elev, LandGrade lg, StateJurisdiction j, double protestScore)
+        : nodeId(id), cityName(name), latitude(lat), longitude(lon), elevationMeters(elev), 
           grade(lg), jurisdiction(j), protestProbabilityScore(protestScore) {}
 };
 

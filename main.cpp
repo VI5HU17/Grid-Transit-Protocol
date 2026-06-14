@@ -2,69 +2,92 @@
 #include <memory>
 #include <iomanip>
 #include <vector>
+#include <string>
+#include <algorithm>
 #include "TerrainNode.h"
 #include "TransmissionEdge.h"
 #include "GridGraph.h"
 #include "Pathfinder.h" 
+#include "MaxFlowEngine.h"
+#include "DataLoader.h" // NEW: Connecting the File Parser
+
+int findNodeIdByName(GridGraph& network, std::string inputName) {
+    std::transform(inputName.begin(), inputName.end(), inputName.begin(), ::tolower);
+    for (const auto& pair : network.getAllNodes()) {
+        std::string nodeName = pair.second->cityName;
+        std::transform(nodeName.begin(), nodeName.end(), nodeName.begin(), ::tolower);
+        if (nodeName == inputName) return pair.first;
+    }
+    return -1; 
+}
 
 int main() {
     std::cout << std::fixed << std::setprecision(2);
     std::cout << "==========================================================" << std::endl;
-    std::cout << "  GATP: GRID ABSORPTION & TRANSIT PROTOCOL INITIALIZED  " << std::endl;
+    std::cout << "  GATP: BIG DATA FILE I/O ENGINE INITIALIZED  " << std::endl;
     std::cout << "==========================================================\n" << std::endl;
 
     GridGraph network;
 
-    std::cout << "[SYSTEM]: Loading Geographic Nodes..." << std::endl;
-    network.addNode(std::make_shared<TerrainNode>(1, 23.85, 69.73, 15.0, LandGrade::BARREN_GOVERNMENT, StateJurisdiction::GUJARAT, 0.02)); // Khavda
-    network.addNode(std::make_shared<TerrainNode>(2, 23.25, 69.66, 110.0, LandGrade::BARREN_GOVERNMENT, StateJurisdiction::GUJARAT, 0.05)); // Bhuj
-    network.addNode(std::make_shared<TerrainNode>(3, 22.81, 70.83, 54.0, LandGrade::MULTI_CROP_FARM, StateJurisdiction::GUJARAT, 0.88)); // Morbi
-    network.addNode(std::make_shared<TerrainNode>(4, 22.72, 71.63, 65.0, LandGrade::SINGLE_CROP_FARM, StateJurisdiction::GUJARAT, 0.35)); // Surendranagar
-    network.addNode(std::make_shared<TerrainNode>(5, 23.02, 72.57, 53.0, LandGrade::URBAN_RESIDENTIAL, StateJurisdiction::GUJARAT, 0.10)); // Ahmedabad
+    // --- NEW: ABSTRACTION LAYER ---
+    std::cout << "[SYSTEM]: Parsing CSV Data Files..." << std::endl;
+    if (!DataLoader::loadNetworkData(network, "nodes.csv", "edges.csv")) {
+        std::cout << "CRITICAL FAILURE: Could not load CSV data. Halting system." << std::endl;
+        return 1;
+    }
+    std::cout << "[SYSTEM]: CSV Data Successfully Ingested." << std::endl;
 
-    std::cout << "[SYSTEM]: Mapping Potential Corridors..." << std::endl;
-    
-    // Routes
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(1, 3, 120.0, 39.0, 2000.0)); // Khavda -> Morbi
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(3, 5, 190.0, -1.0, 2000.0)); // Morbi -> Ahmedabad
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(1, 2, 70.0, 95.0, 2000.0));  // Khavda -> Bhuj
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(2, 4, 210.0, -45.0, 2000.0)); // Bhuj -> Surendranagar
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(4, 5, 130.0, -12.0, 2000.0)); // Surendranagar -> Ahmedabad
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(2, 3, 115.0, -56.0, 2000.0)); // Bhuj -> Morbi
-    network.addTransmissionEdge(std::make_shared<TransmissionEdge>(3, 4, 85.0, 11.0, 2000.0));  // Morbi -> Surendranagar
-
-    std::cout << "[SYSTEM]: Executing Heuristic Weight Calculations..." << std::endl;
     network.evaluateNetworkWeights();
 
-    int startNode, targetNode;
-    std::cout << "\n==========================================================" << std::endl;
-    std::cout << "  INTERACTIVE ROUTING TERMINAL" << std::endl;
-    std::cout << "==========================================================" << std::endl;
-    std::cout << " [1] Khavda (Generation Site)\n [2] Bhuj (Transit Node)\n [3] Morbi (High-Risk Farming Zone)\n [4] Surendranagar (Transit Node)\n [5] Ahmedabad (Demand Hub)" << std::endl;
-    std::cout << "----------------------------------------------------------" << std::endl;
+    std::string startCityInput, targetCityInput;
+    int startNode = -1, targetNode = -1;
 
-    std::cout << "Enter Start Node ID (1-5): ";
-    std::cin >> startNode;
+    std::cout << "\nAvailable Grid Locations: Khavda, Bhuj, Morbi, Surendranagar, Ahmedabad\n" << std::endl;
 
-    std::cout << "Enter Destination Node ID (1-5): ";
-    std::cin >> targetNode;
-
-    std::cout << "\n==========================================================" << std::endl;
-    std::cout << "  EXECUTIVE COMPARATIVE ANALYSIS" << std::endl;
-    std::cout << "==========================================================" << std::endl;
-
-    // The Pitch: If they are doing a full cross-state Khavda to Ahmedabad route
-    if (startNode == 1 && targetNode == 5) {
-        std::vector<int> directPath = {1, 3, 5}; // The path through the high-risk farms
-        double directCost = Pathfinder::calculateSpecificRouteCost(network, directPath);
-        
-        std::cout << "[BASELINE]: Traditional Direct Route (Node 1 -> Node 3 -> Node 5)" << std::endl;
-        std::cout << "Baseline Cost Estimate: Rs. " << directCost << std::endl;
-        std::cout << "Risk Profile: CRITICAL (Severe multi-crop farmer protests expected at Node 3)\n" << std::endl;
+    while (startNode == -1) {
+        std::cout << "Type your STARTING location: ";
+        std::getline(std::cin >> std::ws, startCityInput);
+        startNode = findNodeIdByName(network, startCityInput);
+        if (startNode == -1) std::cout << "[ERROR] City not found in grid. Check spelling.\n";
     }
 
-    std::cout << "[SYSTEM]: Engaging Dijkstra / A* Pathfinding Engine..." << std::endl;
+    while (targetNode == -1) {
+        std::cout << "Type your DESTINATION location: ";
+        std::getline(std::cin >> std::ws, targetCityInput);
+        targetNode = findNodeIdByName(network, targetCityInput);
+        if (targetNode == -1) std::cout << "[ERROR] City not found in grid. Check spelling.\n";
+    }
+
+    std::cout << "\n==========================================================" << std::endl;
+    std::cout << "  EXECUTIVE DASHBOARD" << std::endl;
+    std::cout << "==========================================================" << std::endl;
+    std::cout << "Routing Data: " << network.getNode(startNode)->cityName << " -> " << network.getNode(targetNode)->cityName << "\n" << std::endl;
+
+    std::cout << "--- PHASE 1: FINANCIAL & ROUTING ANALYSIS ---" << std::endl;
+    std::cout << "[SYSTEM]: Engaging A* Pathfinding Engine..." << std::endl;
     Pathfinder::findOptimalRoute(network, startNode, targetNode);
+
+    std::cout << "\n--- PHASE 2: GRID RESILIENCE & FAILOVER ANALYSIS ---" << std::endl;
+    double optimalCapacity = MaxFlowEngine::calculateMaxGridCapacity(network, startNode, targetNode);
+    std::cout << "[SYSTEM STATUS]: GRID NOMINAL. All corridors operational." << std::endl;
+    std::cout << "Maximum Safe Power Evacuation: " << optimalCapacity << " Megawatts\n" << std::endl;
+
+    std::cout << " [CRITICAL ALERT]: PHYSICAL SHUTDOWN ON MAIN CORRIDOR DETECTED" << std::endl;
+    
+    // Programmatically find and disable the direct line (Khavda -> Morbi in this example)
+    // In a full system, you would select this dynamically, but for the demo we find the 4000MW line and drop it
+    for (const auto& edge : network.getOutgoingEdges(startNode)) {
+        if (edge->maxMegawattCapacity == 4000.0) {
+            edge->maxMegawattCapacity = 0.0;
+        }
+    }
+
+    std::cout << "[SYSTEM]: Initiating Ford-Fulkerson Max-Flow Rerouting Protocol...\n" << std::endl;
+    double failoverCapacity = MaxFlowEngine::calculateMaxGridCapacity(network, startNode, targetNode, true);
+    
+    std::cout << "\nEmergency Rerouted Power Evacuation: " << failoverCapacity << " Megawatts" << std::endl;
+    double lostPower = optimalCapacity - failoverCapacity;
+    std::cout << "Stranded Power (Requires VPP Storage Buffer): " << lostPower << " Megawatts" << std::endl;
 
     std::cout << "\n==========================================================" << std::endl;
     return 0;

@@ -19,7 +19,6 @@ struct RouteState {
 
 class Pathfinder {
 public:
-    // NEW FEATURE: Calculate the cost of a manual, traditional route for comparison
     static double calculateSpecificRouteCost(GridGraph& network, const std::vector<int>& routeNodes) {
         double totalCost = 0.0;
         for (size_t i = 0; i < routeNodes.size() - 1; ++i) {
@@ -34,12 +33,11 @@ public:
                     break;
                 }
             }
-            if (!edgeFound) return -1.0; // Path is physically impossible
+            if (!edgeFound) return -1.0; 
         }
         return totalCost;
     }
 
-    // EXISTING FEATURE: Find the absolute best route automatically
     static void findOptimalRoute(GridGraph& network, int startNodeId, int targetNodeId) {
         std::priority_queue<RouteState, std::vector<RouteState>, std::greater<RouteState>> openSet;
         std::unordered_map<int, double> lowestCostToReach;
@@ -79,14 +77,16 @@ public:
         if (targetReached) {
             std::cout << "\n[ALGORITHM]: Optimal Route Discovered!" << std::endl;
             std::cout << "Optimized Project Cost: Rs. " << lowestCostToReach[targetNodeId] << std::endl;
-            printPath(pathHistory, targetNodeId);
+            // WE NOW PASS THE NETWORK DATA INTO THE PRINT FUNCTION
+            printPath(network, pathHistory, targetNodeId);
         } else {
             std::cout << "\n[ALGORITHM]: CRITICAL FAILURE. No viable route exists." << std::endl;
         }
     }
 
 private:
-    static void printPath(std::unordered_map<int, int>& pathHistory, int targetNodeId) {
+    // WE ADDED THE 'GridGraph& network' SO IT CAN LOOK UP THE TEXT NAMES
+    static void printPath(GridGraph& network, std::unordered_map<int, int>& pathHistory, int targetNodeId) {
         std::vector<int> finalPath;
         int current = targetNodeId;
         while (pathHistory.find(current) != pathHistory.end()) {
@@ -98,7 +98,8 @@ private:
 
         std::cout << "Optimized Routing Sequence: ";
         for (size_t i = 0; i < finalPath.size(); ++i) {
-            std::cout << "Node " << finalPath[i];
+            // HERE IS THE MAGIC: Printing the actual city name!
+            std::cout << network.getNode(finalPath[i])->cityName;
             if (i < finalPath.size() - 1) std::cout << " -> ";
         }
         std::cout << std::endl;

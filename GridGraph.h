@@ -36,6 +36,8 @@ public:
     int getNodeCount() const { 
         return nodes.size(); 
     }
+    // Allows the Failover Engine to scan the entire grid at once
+    const std::unordered_map<int, std::shared_ptr<TerrainNode>>& getAllNodes() const { return nodes; }
 
     // THE NEW PIPELINE: This calculates the true cost for every single route
     void evaluateNetworkWeights() {
